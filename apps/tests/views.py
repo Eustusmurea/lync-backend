@@ -3,18 +3,27 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
+from apps.users.permissions import RBACMixin
 from .models import TestPanel, TestOrder, TestResult
 from .serializers import TestPanelSerializer, TestOrderSerializer, TestResultSerializer
 from .filters import TestOrderFilter
 
 
-class TestPanelViewSet(viewsets.ModelViewSet):
+class TestPanelViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = TestPanel.objects.filter(is_active=True)
     serializer_class = TestPanelSerializer
     search_fields = ['name', 'code']
+    rbac_map = {
+        'list': 'lab.view',
+        'retrieve': 'lab.view',
+        'create': 'lab.panels_manage',
+        'update': 'lab.panels_manage',
+        'partial_update': 'lab.panels_manage',
+        'destroy': 'lab.panels_manage',
+    }
 
 
-class TestOrderViewSet(viewsets.ModelViewSet):
+class TestOrderViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = TestOrder.objects.select_related(
         'sample__patient', 'panel', 'ordered_by', 'assigned_to'
     ).prefetch_related('results__parameter')
@@ -22,6 +31,23 @@ class TestOrderViewSet(viewsets.ModelViewSet):
     filterset_class = TestOrderFilter
     search_fields = ['order_id', 'sample__patient__first_name', 'sample__patient__last_name', 'sample__patient__mrn']
     ordering_fields = ['ordered_at', 'status', 'panel__name']
+
+    rbac_map = {
+        'list': 'lab.view',
+        'retrieve': 'lab.view',
+        'create': 'lab.view',
+        'update': 'lab.view',
+        'partial_update': 'lab.view',
+        'destroy': 'lab.view',
+        'start': 'lab.results',
+        'complete': 'lab.results',
+        'notify_critical': 'lab.results',
+        'overdue': 'lab.view',
+        'critical': 'lab.view',
+    }
+
+    def perform_create(self, serializer):
+        serializer.save(ordered_by=self.request.user)
 
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
@@ -38,6 +64,9 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         order.status = 'complete'
         order.completed_at = timezone.now()
         order.save()
+        if order.visit_id:
+            from apps.visits.workflow import sync_visit_after_lab
+            sync_visit_after_lab(order.visit)
         return Response(TestOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
@@ -61,9 +90,19 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TestResultViewSet(viewsets.ModelViewSet):
+class TestResultViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = TestResult.objects.select_related('order', 'parameter', 'entered_by', 'verified_by')
     serializer_class = TestResultSerializer
+
+    rbac_map = {
+        'list': 'lab.view',
+        'retrieve': 'lab.view',
+        'create': 'lab.results',
+        'update': 'lab.results',
+        'partial_update': 'lab.results',
+        'destroy': 'lab.results',
+        'verify': 'lab.results',
+    }
 
     def perform_create(self, serializer):
         result = serializer.save(entered_by=self.request.user)

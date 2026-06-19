@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import HasPermission
 from django.utils import timezone
 from django.db.models import Count, Avg, Q
 from datetime import timedelta
@@ -11,7 +12,7 @@ from apps.inventory.models import Reagent
 
 
 class DashboardStatsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission('dashboard.view')]
 
     def get(self, request):
         today = timezone.now().date()
@@ -58,7 +59,7 @@ class DashboardStatsView(APIView):
 
 
 class TestVolumeReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission('lab.view')]
 
     def get(self, request):
         days = int(request.query_params.get('days', 30))
@@ -89,7 +90,7 @@ class TestVolumeReportView(APIView):
 
 
 class InventoryReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission('inventory.view')]
 
     def get(self, request):
         reagents = Reagent.objects.filter(is_active=True)

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Sum, Count
 from django_filters.rest_framework import DjangoFilterBackend
+from apps.users.permissions import RBACMixin
 from .models import InsuranceProvider, Invoice, InvoiceItem, Payment
 from .serializers import (
     InsuranceProviderSerializer, InvoiceSerializer,
@@ -11,19 +12,35 @@ from .serializers import (
 )
 
 
-class InsuranceProviderViewSet(viewsets.ModelViewSet):
+class InsuranceProviderViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = InsuranceProvider.objects.filter(is_active=True)
     serializer_class = InsuranceProviderSerializer
     search_fields    = ['name', 'code']
+    rbac_map = {a: 'billing.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Invoice.objects.select_related(
         'patient', 'insurance', 'created_by'
     ).prefetch_related('items__test_order', 'payments__received_by')
     filter_backends  = [DjangoFilterBackend]
     filterset_fields = ['status', 'patient', 'insurance']
     search_fields    = ['invoice_number', 'patient__first_name', 'patient__last_name', 'patient__mrn']
+
+    rbac_map = {
+        'list': 'billing.view',
+        'retrieve': 'billing.view',
+        'create': 'billing.view',
+        'update': 'billing.view',
+        'partial_update': 'billing.view',
+        'destroy': 'billing.view',
+        'issue': 'billing.view',
+        'void': 'billing.view',
+        'add_payment': 'billing.payments',
+        'add_item': 'billing.invoice',
+        'generate_from_visit': 'billing.invoice',
+        'summary': 'billing.view',
+    }
 
     def get_serializer_class(self):
         return InvoiceCreateSerializer if self.action == 'create' else InvoiceSerializer
@@ -81,13 +98,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         })
 
 
-class InvoiceItemViewSet(viewsets.ModelViewSet):
+class InvoiceItemViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = InvoiceItem.objects.select_related('invoice', 'test_order')
     serializer_class = InvoiceItemSerializer
     filterset_fields = ['invoice']
+    rbac_map = {a: 'billing.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
 
 
-class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+class PaymentViewSet(RBACMixin, viewsets.ReadOnlyModelViewSet):
     queryset         = Payment.objects.select_related('invoice', 'received_by')
     serializer_class = PaymentSerializer
     filterset_fields = ['invoice', 'method']
+    rbac_map = {'list': 'billing.view', 'retrieve': 'billing.view'}

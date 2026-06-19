@@ -2,25 +2,41 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Count
+from apps.users.permissions import RBACMixin
 from .models import (DrugCategory, Drug, DrugStockTransaction,
-                     Prescription, PrescriptionItem, Dispense)
+                     Prescription, PrescriptionItem, Dispense, OTCSale)
 from .serializers import (
     DrugCategorySerializer, DrugSerializer, DrugStockTransactionSerializer,
     PrescriptionSerializer, PrescriptionCreateSerializer,
     DispenseSerializer, DispenseCreateSerializer,
+    OTCSaleSerializer, OTCSaleCreateSerializer,
 )
 
 
-class DrugCategoryViewSet(viewsets.ModelViewSet):
+class DrugCategoryViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = DrugCategory.objects.all()
     serializer_class = DrugCategorySerializer
+    rbac_map = {a: 'pharmacy.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
 
 
-class DrugViewSet(viewsets.ModelViewSet):
+class DrugViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = Drug.objects.select_related('category').filter(is_active=True)
     serializer_class = DrugSerializer
     search_fields    = ['name', 'generic_name', 'brand_name', 'barcode']
     filterset_fields = ['category', 'form', 'controlled']
+
+    rbac_map = {
+        'list': 'pharmacy.view',
+        'retrieve': 'pharmacy.view',
+        'create': 'inventory.manage',
+        'update': 'inventory.manage',
+        'partial_update': 'inventory.manage',
+        'destroy': 'inventory.manage',
+        'low_stock': 'pharmacy.view',
+        'out_of_stock': 'pharmacy.view',
+        'adjust_stock': 'inventory.manage',
+        'summary': 'pharmacy.view',
+    }
 
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
@@ -72,18 +88,30 @@ class DrugViewSet(viewsets.ModelViewSet):
         })
 
 
-class DrugStockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+class DrugStockTransactionViewSet(RBACMixin, viewsets.ReadOnlyModelViewSet):
     queryset         = DrugStockTransaction.objects.select_related('drug', 'performed_by')
     serializer_class = DrugStockTransactionSerializer
     filterset_fields = ['drug', 'transaction_type']
+    rbac_map = {'list': 'pharmacy.view', 'retrieve': 'pharmacy.view'}
 
 
-class PrescriptionViewSet(viewsets.ModelViewSet):
+class PrescriptionViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Prescription.objects.select_related(
         'patient', 'prescribed_by'
     ).prefetch_related('items__drug')
     search_fields    = ['rx_number', 'patient__first_name', 'patient__last_name', 'patient__mrn']
     filterset_fields = ['status', 'patient']
+
+    rbac_map = {
+        'list': 'pharmacy.view',
+        'retrieve': 'pharmacy.view',
+        'create': 'clinical.prescribe',
+        'update': 'pharmacy.view',
+        'partial_update': 'pharmacy.view',
+        'destroy': 'pharmacy.view',
+        'cancel': 'pharmacy.view',
+        'active': 'pharmacy.view',
+    }
 
     def get_serializer_class(self):
         return PrescriptionCreateSerializer if self.action == 'create' else PrescriptionSerializer
@@ -104,7 +132,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         return Response(PrescriptionSerializer(qs, many=True).data)
 
 
-class DispenseViewSet(viewsets.ModelViewSet):
+class DispenseViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Dispense.objects.select_related(
         'prescription__patient', 'dispensed_by'
     ).prefetch_related('items__drug')
@@ -113,8 +141,42 @@ class DispenseViewSet(viewsets.ModelViewSet):
                         'prescription__patient__last_name']
     filterset_fields = ['prescription']
 
+    rbac_map = {
+        'list': 'pharmacy.dispense',
+        'retrieve': 'pharmacy.dispense',
+        'create': 'pharmacy.dispense',
+        'update': 'pharmacy.dispense',
+        'partial_update': 'pharmacy.dispense',
+        'destroy': 'pharmacy.dispense',
+    }
+
     def get_serializer_class(self):
         return DispenseCreateSerializer if self.action == 'create' else DispenseSerializer
+
+    def perform_create(self, serializer):
+        dispense = serializer.save(dispensed_by=self.request.user)
+        rx = dispense.prescription
+        if rx.visit_id:
+            from apps.visits.workflow import sync_visit_after_dispense
+            sync_visit_after_dispense(rx.visit)
+
+
+class OTCSaleViewSet(RBACMixin, viewsets.ModelViewSet):
+    queryset = OTCSale.objects.select_related('patient', 'dispensed_by').prefetch_related('items__drug')
+    search_fields = ['sale_id', 'patient__first_name', 'patient__last_name', 'patient__mrn']
+    filterset_fields = ['patient', 'payment_method']
+
+    rbac_map = {
+        'list': 'pharmacy.otc',
+        'retrieve': 'pharmacy.otc',
+        'create': 'pharmacy.otc',
+        'update': 'pharmacy.otc',
+        'partial_update': 'pharmacy.otc',
+        'destroy': 'pharmacy.otc',
+    }
+
+    def get_serializer_class(self):
+        return OTCSaleCreateSerializer if self.action == 'create' else OTCSaleSerializer
 
     def perform_create(self, serializer):
         serializer.save(dispensed_by=self.request.user)

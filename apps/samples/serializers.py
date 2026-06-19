@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from apps.users.permissions import RBACMixin
 from .models import Sample, Patient
 
 
@@ -33,18 +34,49 @@ class SampleSerializer(serializers.ModelSerializer):
         read_only_fields = ['sample_id', 'received_at', 'barcode']
 
 
-class PatientViewSet(viewsets.ModelViewSet):
+class PatientViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     search_fields = ['first_name', 'last_name', 'mrn', 'phone']
     filterset_fields = ['gender']
 
+    rbac_map = {
+        'list': 'patients.view',
+        'retrieve': 'patients.view',
+        'create': 'patients.create',
+        'update': 'patients.create',
+        'partial_update': 'patients.create',
+        'destroy': 'patients.delete',
+        'file': 'reports.print',
+    }
 
-class SampleViewSet(viewsets.ModelViewSet):
+    @action(detail=True, methods=['get'])
+    def file(self, request, pk=None):
+        from apps.visits.models import Visit
+        from apps.visits.serializers import VisitReportSerializer
+        patient = self.get_object()
+        visits = Visit.objects.filter(patient=patient).order_by('-registered_at')
+        return Response({
+            'patient': PatientSerializer(patient).data,
+            'visits': VisitReportSerializer(visits, many=True).data,
+        })
+
+
+class SampleViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Sample.objects.select_related('patient', 'received_by')
     serializer_class = SampleSerializer
     search_fields = ['sample_id', 'patient__first_name', 'patient__last_name', 'patient__mrn']
     filterset_fields = ['status', 'sample_type', 'priority']
+
+    rbac_map = {
+        'list': 'lab.view',
+        'retrieve': 'lab.view',
+        'create': 'lab.view',
+        'update': 'lab.view',
+        'partial_update': 'lab.view',
+        'destroy': 'lab.view',
+        'reject': 'lab.results',
+    }
 
     def perform_create(self, serializer):
         serializer.save(received_by=self.request.user)

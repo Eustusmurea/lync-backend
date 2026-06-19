@@ -38,6 +38,10 @@ class Invoice(models.Model):
 
     invoice_number = models.CharField(max_length=30, unique=True, editable=False)
     patient        = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='invoices')
+    visit          = models.ForeignKey(
+        'visits.Visit', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='invoices',
+    )
     insurance      = models.ForeignKey(InsuranceProvider, on_delete=models.SET_NULL,
                                        null=True, blank=True, related_name='invoices')
     status         = models.CharField(max_length=20, choices=STATUS, default='draft')
@@ -133,6 +137,11 @@ class Payment(models.Model):
         invoice = self.invoice
         invoice.amount_paid = sum(p.amount for p in invoice.payments.all())
         invoice.save()
+        # Complete linked visit when fully paid
+        visit = getattr(invoice, 'visit', None)
+        if visit and invoice.status == 'paid' and visit.status != 'completed':
+            from apps.visits.workflow import sync_visit_after_payment
+            sync_visit_after_payment(visit)
 
     def __str__(self):
         return f'{self.invoice.invoice_number} — {self.method} {self.amount}'

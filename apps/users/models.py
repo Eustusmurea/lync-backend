@@ -5,13 +5,17 @@ from django.db import models
 class User(AbstractUser):
     ROLES = [
         ('admin', 'Administrator'),
+        ('receptionist', 'Receptionist'),
+        ('clinician', 'Clinician'),
+        ('technician', 'Lab Technician'),
+        ('pharmacist', 'Pharmacist'),
+        ('accountant', 'Accountant'),
+        # Legacy roles (kept for existing records)
         ('manager', 'Lab Manager'),
         ('scientist', 'Lab Scientist'),
-        ('technician', 'Lab Technician'),
-        ('clinician', 'Clinician'),
     ]
 
-    role = models.CharField(max_length=20, choices=ROLES, default='technician')
+    role = models.CharField(max_length=20, choices=ROLES, default='receptionist')
     phone = models.CharField(max_length=20, blank=True)
     department = models.CharField(max_length=100, blank=True)
     license_number = models.CharField(max_length=50, blank=True)

@@ -26,9 +26,12 @@ class Visit(models.Model):
     registered_at   = models.DateTimeField(auto_now_add=True)
     triage_at       = models.DateTimeField(null=True, blank=True)
     consultation_at = models.DateTimeField(null=True, blank=True)
-    lab_at          = models.DateTimeField(null=True, blank=True)
-    pharmacy_at     = models.DateTimeField(null=True, blank=True)
-    completed_at    = models.DateTimeField(null=True, blank=True)
+    lab_at              = models.DateTimeField(null=True, blank=True)
+    results_ready_at    = models.DateTimeField(null=True, blank=True)
+    prescription_at     = models.DateTimeField(null=True, blank=True)
+    pharmacy_at         = models.DateTimeField(null=True, blank=True)
+    completed_at        = models.DateTimeField(null=True, blank=True)
+    requires_lab        = models.BooleanField(default=True, help_text='Whether lab tests are expected for this visit')
 
     # Staff
     registered_by   = models.ForeignKey(
@@ -58,11 +61,13 @@ class Visit(models.Model):
         """Move the visit forward in the workflow."""
         from django.utils import timezone
         ts_map = {
-            'triage':        'triage_at',
-            'consultation':  'consultation_at',
-            'lab':           'lab_at',
-            'pharmacy':      'pharmacy_at',
-            'completed':     'completed_at',
+            'triage':         'triage_at',
+            'consultation':   'consultation_at',
+            'lab':            'lab_at',
+            'results_ready':  'results_ready_at',
+            'prescription':   'prescription_at',
+            'pharmacy':       'pharmacy_at',
+            'completed':      'completed_at',
         }
         self.status = to_status
         if to_status in ts_map:
@@ -118,10 +123,7 @@ class Diagnosis(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Advance visit status
-        if self.send_to_lab and self.visit.status in ('consultation',):
-            self.visit.advance('lab', self.doctor)
-        elif self.visit.status == 'consultation':
+        if self.visit.status == 'results_ready':
             self.visit.advance('prescription', self.doctor)
 
     def __str__(self):

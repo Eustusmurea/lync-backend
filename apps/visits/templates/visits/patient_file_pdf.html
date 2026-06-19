@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Patient File — {{ visit_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @frame footer {
+        -pdf-frame-content: footerContent;
+        bottom: 8mm;
+        margin-left: 16mm;
+        margin-right: 16mm;
+        height: 10mm;
+      }
+    }
+
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      color: #1c2530;
+      line-height: 1.45;
+    }
+
+    .header {
+      border-bottom: 3px solid #18412c;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      font-size: 22pt;
+      font-weight: bold;
+      color: #18412c;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-sub {
+      font-size: 9pt;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .meta-row {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .meta-row td {
+      vertical-align: top;
+      padding: 0;
+    }
+
+    .visit-badge {
+      background: #18412c;
+      color: #ffffff;
+      padding: 6px 12px;
+      font-size: 9pt;
+      font-weight: bold;
+      text-align: right;
+    }
+
+    .section {
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #18412c;
+      border-left: 4px solid #18412c;
+      padding-left: 8px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+    }
+
+    table.data td {
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+
+    table.data td.label {
+      background: #f8fafc;
+      font-weight: bold;
+      width: 28%;
+      color: #475569;
+    }
+
+    table.list {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+    }
+
+    table.list th {
+      background: #18412c;
+      color: #ffffff;
+      padding: 6px 8px;
+      text-align: left;
+      font-size: 8.5pt;
+    }
+
+    table.list td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    table.list tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .empty {
+      color: #94a3b8;
+      font-style: italic;
+      font-size: 9pt;
+    }
+
+    .footer-text {
+      font-size: 8pt;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 4px;
+    }
+
+    .confidential {
+      font-size: 8pt;
+      color: #b45309;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <table width="100%">
+      <tr>
+        <td width="65%">
+          <div class="brand">Lyncare</div>
+          <div class="brand-sub">Integrated Healthcare Management System</div>
+        </td>
+        <td width="35%" align="right">
+          <div class="visit-badge">VISIT FILE<br/>{{ visit_number }}</div>
+        </td>
+      </tr>
+    </table>
+    <table class="meta-row" width="100%">
+      <tr>
+        <td width="50%">
+          <strong>Generated:</strong> {{ generated_at }}
+        </td>
+        <td width="50%" align="right">
+          <strong>Status:</strong> {{ status_display }}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Patient -->
+  <div class="section">
+    <div class="section-title">Patient Information</div>
+    <table class="data">
+      <tr>
+        <td class="label">Full Name</td>
+        <td>{{ patient_name }}</td>
+        <td class="label">MRN</td>
+        <td>{{ patient_mrn }}</td>
+      </tr>
+      <tr>
+        <td class="label">Date of Birth</td>
+        <td>{{ patient_dob }}</td>
+        <td class="label">Gender</td>
+        <td>{{ patient_gender_display }}</td>
+      </tr>
+      <tr>
+        <td class="label">Phone</td>
+        <td>{{ patient_phone|default:"—" }}</td>
+        <td class="label">Email</td>
+        <td>{{ patient_email|default:"—" }}</td>
+      </tr>
+      {% if patient_address %}
+      <tr>
+        <td class="label">Address</td>
+        <td colspan="3">{{ patient_address }}</td>
+      </tr>
+      {% endif %}
+    </table>
+  </div>
+
+  <!-- Visit -->
+  <div class="section">
+    <div class="section-title">Visit Details</div>
+    <table class="data">
+      <tr>
+        <td class="label">Registered</td>
+        <td>{{ registered_at }}</td>
+        <td class="label">Attending Doctor</td>
+        <td>{{ attending_doctor_name|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Chief Complaint</td>
+        <td colspan="3">{{ chief_complaint|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Clinical Notes</td>
+        <td colspan="3">{{ notes|default:"—" }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Vitals -->
+  <div class="section">
+    <div class="section-title">Vitals</div>
+    {% if vitals %}
+    <table class="data">
+      <tr>
+        <td class="label">Blood Pressure</td>
+        <td>{{ vitals.blood_pressure|default:"—" }}</td>
+        <td class="label">Pulse</td>
+        <td>{% if vitals.pulse %}{{ vitals.pulse }} bpm{% else %}—{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Temperature</td>
+        <td>{% if vitals.temperature %}{{ vitals.temperature }} °C{% else %}—{% endif %}</td>
+        <td class="label">SpO2</td>
+        <td>{% if vitals.spo2 %}{{ vitals.spo2 }}%{% else %}—{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Weight</td>
+        <td>{% if vitals.weight %}{{ vitals.weight }} kg{% else %}—{% endif %}</td>
+        <td class="label">Height / BMI</td>
+        <td>
+          {% if vitals.height %}{{ vitals.height }} cm{% else %}—{% endif %}
+          {% if vitals.bmi %} / BMI {{ vitals.bmi }}{% endif %}
+        </td>
+      </tr>
+    </table>
+    {% else %}
+    <p class="empty">No vitals recorded for this visit.</p>
+    {% endif %}
+  </div>
+
+  <!-- Diagnosis -->
+  <div class="section">
+    <div class="section-title">Diagnosis &amp; Management</div>
+    {% if diagnosis %}
+    <table class="data">
+      <tr>
+        <td class="label">Diagnosis</td>
+        <td colspan="3">{{ diagnosis.diagnosis }}</td>
+      </tr>
+      <tr>
+        <td class="label">ICD-10</td>
+        <td>{{ diagnosis.icd_code|default:"—" }}</td>
+        <td class="label">Doctor</td>
+        <td>{{ diagnosis.doctor_name|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Examination</td>
+        <td colspan="3">{{ diagnosis.examination_notes|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Management Plan</td>
+        <td colspan="3">{{ diagnosis.management_plan|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Follow-up</td>
+        <td colspan="3">{{ diagnosis.follow_up|default:"—" }}</td>
+      </tr>
+    </table>
+    {% else %}
+    <p class="empty">No diagnosis recorded.</p>
+    {% endif %}
+  </div>
+
+  <!-- Lab Tests -->
+  <div class="section">
+    <div class="section-title">Laboratory Tests</div>
+    {% if test_orders %}
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Panel</th>
+          <th>Status</th>
+          <th>Ordered</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in test_orders %}
+        <tr>
+          <td>{{ order.order_id }}</td>
+          <td>{{ order.panel_name }}</td>
+          <td>{{ order.status }}</td>
+          <td>{{ order.ordered_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No lab orders for this visit.</p>
+    {% endif %}
+  </div>
+
+  <!-- Prescriptions -->
+  <div class="section">
+    <div class="section-title">Prescriptions</div>
+    {% if prescriptions %}
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Rx Number</th>
+          <th>Status</th>
+          <th>Prescribed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rx in prescriptions %}
+        <tr>
+          <td>{{ rx.rx_number }}</td>
+          <td>{{ rx.status }}</td>
+          <td>{{ rx.prescribed_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No prescriptions issued.</p>
+    {% endif %}
+  </div>
+
+  <!-- Billing -->
+  <div class="section">
+    <div class="section-title">Visit Charges</div>
+    {% if billing_events %}
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Description</th>
+          <th>Amount (KSh)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for charge in billing_events %}
+        <tr>
+          <td>{{ charge.stage }}</td>
+          <td>{{ charge.description }}</td>
+          <td>{{ charge.amount }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No charges recorded.</p>
+    {% endif %}
+  </div>
+
+  <div id="footerContent">
+    <div class="footer-text">
+      Lyncare Patient Visit File · {{ visit_number }} · {{ patient_name }} ({{ patient_mrn }})
+    </div>
+    <div class="confidential">CONFIDENTIAL — For authorized clinical use only</div>
+  </div>
+
+</body>
+</html>

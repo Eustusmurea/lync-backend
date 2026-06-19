@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import (DrugCategory, Drug, DrugStockTransaction,
-                     Prescription, PrescriptionItem, Dispense, DispenseItem)
+                     Prescription, PrescriptionItem, Dispense, DispenseItem,
+                     OTCSale, OTCSaleItem)
 
 
 class DrugCategorySerializer(serializers.ModelSerializer):
@@ -102,3 +103,47 @@ class DispenseCreateSerializer(serializers.ModelSerializer):
         for item in items_data:
             DispenseItem.objects.create(dispense=dispense, **item)
         return dispense
+
+
+class OTCSaleItemSerializer(serializers.ModelSerializer):
+    drug_name = serializers.CharField(source='drug.name', read_only=True)
+    line_total = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = OTCSaleItem
+        fields = ['id', 'drug', 'drug_name', 'quantity', 'unit_price', 'line_total']
+        read_only_fields = ['id', 'line_total']
+
+    def get_line_total(self, obj):
+        return obj.line_total
+
+
+class OTCSaleSerializer(serializers.ModelSerializer):
+    patient_name     = serializers.CharField(source='patient.full_name', read_only=True, default='')
+    patient_mrn      = serializers.CharField(source='patient.mrn', read_only=True, default='')
+    dispensed_by_name= serializers.CharField(source='dispensed_by.get_full_name', read_only=True, default='')
+    items            = OTCSaleItemSerializer(many=True, read_only=True)
+    total_amount     = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = OTCSale
+        fields = '__all__'
+        read_only_fields = ['sale_id', 'sold_at']
+
+    def get_total_amount(self, obj):
+        return obj.total_amount
+
+
+class OTCSaleCreateSerializer(serializers.ModelSerializer):
+    items = OTCSaleItemSerializer(many=True)
+
+    class Meta:
+        model   = OTCSale
+        exclude = ['sale_id']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        sale = OTCSale.objects.create(**validated_data)
+        for item in items_data:
+            OTCSaleItem.objects.create(sale=sale, **item)
+        return sale

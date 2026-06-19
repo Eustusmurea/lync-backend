@@ -125,6 +125,10 @@ class Prescription(models.Model):
 
     rx_number    = models.CharField(max_length=30, unique=True, editable=False)
     patient      = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='prescriptions')
+    visit        = models.ForeignKey(
+        'visits.Visit', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='prescriptions',
+    )
     prescribed_by= models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                      null=True, blank=True, related_name='prescriptions_written')
     status       = models.CharField(max_length=20, choices=STATUS, default='active')
@@ -238,3 +242,73 @@ class DispenseItem(models.Model):
 
     def __str__(self):
         return f'{self.dispense.dispense_id} — {self.drug} x{self.quantity_dispensed}'
+
+
+class OTCSale(models.Model):
+    """Over-the-counter drug sale without a prescription."""
+    PAYMENT_METHODS = [
+        ('cash',      'Cash'),
+        ('mpesa',     'M-Pesa'),
+        ('card',      'Credit / Debit Card'),
+        ('insurance', 'Insurance'),
+        ('bank',      'Bank Transfer'),
+    ]
+
+    sale_id        = models.CharField(max_length=30, unique=True, editable=False)
+    patient        = models.ForeignKey(Patient, on_delete=models.SET_NULL,
+                                         null=True, blank=True, related_name='otc_sales')
+    dispensed_by   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name='otc_sales')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='cash')
+    notes          = models.TextField(blank=True)
+    sold_at        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sold_at']
+
+    def save(self, *args, **kwargs):
+        if not self.sale_id:
+            last = OTCSale.objects.order_by('id').last()
+            num = (last.id + 1) if last else 1
+            self.sale_id = f'OTC-{num:05d}'
+        super().save(*args, **kwargs)
+
+    @property
+    def total_amount(self):
+        return sum(item.line_total for item in self.items.all())
+
+    def __str__(self):
+        return self.sale_id
+
+
+class OTCSaleItem(models.Model):
+    sale     = models.ForeignKey(OTCSale, on_delete=models.CASCADE, related_name='items')
+    drug     = models.ForeignKey(Drug, on_delete=models.PROTECT)
+    quantity = models.FloatField(validators=[MinValueValidator(0.01)])
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    @property
+    def line_total(self):
+        return self.unit_price * decimal.Decimal(str(self.quantity))
+
+    def save(self, *args, **kwargs):
+        if not self.unit_price:
+            self.unit_price = self.drug.unit_price
+        super().save(*args, **kwargs)
+        drug = self.drug
+        before = drug.stock_quantity
+        drug.stock_quantity = max(0, drug.stock_quantity - self.quantity)
+        drug.save()
+        DrugStockTransaction.objects.create(
+            drug=drug,
+            transaction_type='dispense',
+            quantity=self.quantity,
+            quantity_before=before,
+            quantity_after=drug.stock_quantity,
+            reference=self.sale.sale_id,
+            performed_by=self.sale.dispensed_by,
+            notes='OTC sale',
+        )
+
+    def __str__(self):
+        return f'{self.sale.sale_id} — {self.drug} x{self.quantity}'

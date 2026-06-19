@@ -43,6 +43,10 @@ class TestOrder(models.Model):
 
     order_id = models.CharField(max_length=20, unique=True, editable=False)
     sample = models.ForeignKey(Sample, on_delete=models.PROTECT, related_name='test_orders')
+    visit = models.ForeignKey(
+        'visits.Visit', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='test_orders',
+    )
     panel = models.ForeignKey(TestPanel, on_delete=models.PROTECT)
     ordered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,

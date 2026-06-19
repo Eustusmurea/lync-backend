@@ -1,6 +1,7 @@
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.users.permissions import RBACMixin
 from .models import Reagent, ReagentCategory, StockTransaction
 
 
@@ -30,11 +31,22 @@ class StockTransactionSerializer(serializers.ModelSerializer):
         read_only_fields = ['quantity_before', 'quantity_after', 'performed_by']
 
 
-class ReagentViewSet(viewsets.ModelViewSet):
+class ReagentViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset = Reagent.objects.select_related('category').filter(is_active=True)
     serializer_class = ReagentSerializer
     search_fields = ['name', 'catalog_number', 'manufacturer']
     filterset_fields = ['category', 'unit']
+
+    rbac_map = {
+        'list': 'inventory.view',
+        'retrieve': 'inventory.view',
+        'create': 'inventory.manage',
+        'update': 'inventory.manage',
+        'partial_update': 'inventory.manage',
+        'destroy': 'inventory.manage',
+        'low_stock': 'inventory.view',
+        'adjust_stock': 'inventory.manage',
+    }
 
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
@@ -69,7 +81,8 @@ class ReagentViewSet(viewsets.ModelViewSet):
         return Response(ReagentSerializer(reagent).data)
 
 
-class StockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+class StockTransactionViewSet(RBACMixin, viewsets.ReadOnlyModelViewSet):
     queryset = StockTransaction.objects.select_related('reagent', 'performed_by')
     serializer_class = StockTransactionSerializer
     filterset_fields = ['reagent', 'transaction_type']
+    rbac_map = {'list': 'inventory.view', 'retrieve': 'inventory.view'}

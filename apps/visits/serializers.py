@@ -50,13 +50,10 @@ class VisitSerializer(serializers.ModelSerializer):
         read_only_fields = ['visit_number', 'registered_at', 'created_at', 'updated_at']
 
     def get_test_orders_count(self, obj):
-        # Import here to avoid circular
-        from apps.tests.models import TestOrder
-        return TestOrder.objects.filter(sample__patient=obj.patient).count()
+        return obj.test_orders.count()
 
     def get_prescriptions_count(self, obj):
-        from apps.pharmacy.models import Prescription
-        return Prescription.objects.filter(patient=obj.patient).count()
+        return obj.prescriptions.count()
 
 
 class VisitReportSerializer(serializers.ModelSerializer):
