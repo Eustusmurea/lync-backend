@@ -98,10 +98,39 @@ class DispenseCreateSerializer(serializers.ModelSerializer):
         exclude = ['dispense_id']
 
     def create(self, validated_data):
+        from django.db import transaction
+
         items_data = validated_data.pop('items')
-        dispense   = Dispense.objects.create(**validated_data)
-        for item in items_data:
-            DispenseItem.objects.create(dispense=dispense, **item)
+        prescription = validated_data.get('prescription')
+
+        if not prescription:
+            raise serializers.ValidationError({'prescription': 'Prescription is required for dispensing'})
+
+        with transaction.atomic():
+            dispense = Dispense.objects.create(**validated_data)
+            for item in items_data:
+                pres_item_id = item.get('prescription_item')
+                qty = float(item.get('quantity_dispensed', 0))
+
+                try:
+                    pres_item = PrescriptionItem.objects.select_for_update().get(id=pres_item_id)
+                except PrescriptionItem.DoesNotExist:
+                    raise serializers.ValidationError({'items': f'Prescription item {pres_item_id} does not exist'})
+
+                if pres_item.prescription_id != prescription.id:
+                    raise serializers.ValidationError({'items': 'Prescription item does not belong to the specified prescription'})
+
+                if qty <= 0:
+                    raise serializers.ValidationError({'items': 'Quantity must be greater than zero'})
+
+                if pres_item.remaining < qty:
+                    raise serializers.ValidationError({'items': f'Requested quantity for item {pres_item_id} exceeds remaining quantity ({pres_item.remaining})'})
+
+                # attach the prescription_item id to the item data expected by model
+                item['prescription_item'] = pres_item.id
+                # create the DispenseItem (this will deduct stock and update prescription)
+                DispenseItem.objects.create(dispense=dispense, **item)
+
         return dispense
 
 

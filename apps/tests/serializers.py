@@ -27,6 +27,27 @@ class TestResultSerializer(serializers.ModelSerializer):
         model = TestResult
         fields = '__all__'
 
+    def validate(self, attrs):
+        """
+        Ensure the provided parameter belongs to the TestOrder's panel
+        and that the order exists.
+        """
+        order = attrs.get('order')
+        parameter = attrs.get('parameter')
+
+        if not order:
+            raise serializers.ValidationError({'order': 'Order is required'})
+        if not parameter:
+            raise serializers.ValidationError({'parameter': 'Parameter is required'})
+
+        # Parameter must belong to the panel on the order
+        if parameter.panel_id != order.panel_id:
+            raise serializers.ValidationError(
+                {'parameter': 'This parameter does not belong to the ordered test panel.'}
+            )
+
+        return attrs
+
 
 class TestOrderSerializer(serializers.ModelSerializer):
     panel_name = serializers.CharField(source='panel.name', read_only=True)

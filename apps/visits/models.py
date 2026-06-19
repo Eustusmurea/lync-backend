@@ -17,7 +17,10 @@ class Visit(models.Model):
     ]
 
     visit_number    = models.CharField(max_length=30, unique=True, editable=False)
-    patient         = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='visits')
+    # Patient may be unassigned when reception initiates a visit
+    patient         = models.ForeignKey(
+        Patient, on_delete=models.PROTECT, related_name='visits', null=True, blank=True
+    )
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='registered')
     chief_complaint = models.TextField(blank=True, help_text='Reason for visit')
     notes           = models.TextField(blank=True)
@@ -55,7 +58,8 @@ class Visit(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'{self.visit_number} — {self.patient}'
+        patient_part = str(self.patient) if self.patient else 'Unassigned'
+        return f'{self.visit_number} — {patient_part}'
 
     def advance(self, to_status: str, user=None):
         """Move the visit forward in the workflow."""

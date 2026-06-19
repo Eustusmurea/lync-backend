@@ -59,6 +59,24 @@ class VisitViewSet(RBACMixin, viewsets.ModelViewSet):
         )
 
     @action(detail=True, methods=['post'])
+    def assign_patient(self, request, pk=None):
+        """Assign a patient to an existing visit (used when reception registers patient after initiating visit)."""
+        from apps.samples.models import Patient
+
+        visit = self.get_object()
+        patient_id = request.data.get('patient')
+        if not patient_id:
+            return Response({'error': 'patient id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            patient = Patient.objects.get(pk=patient_id)
+        except Patient.DoesNotExist:
+            return Response({'error': 'patient not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        visit.patient = patient
+        visit.save()
+        return Response(VisitSerializer(visit).data)
+
+    @action(detail=True, methods=['post'])
     def advance(self, request, pk=None):
         visit = self.get_object()
         to    = request.data.get('status')

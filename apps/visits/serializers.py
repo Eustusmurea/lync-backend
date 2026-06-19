@@ -49,6 +49,14 @@ class VisitSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['visit_number', 'registered_at', 'created_at', 'updated_at']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Ensure patient-related fields are empty strings when no patient assigned
+        if not instance.patient:
+            for k in ['patient_name', 'patient_mrn', 'patient_dob', 'patient_gender', 'patient_phone']:
+                data[k] = None
+        return data
+
     def get_test_orders_count(self, obj):
         return obj.test_orders.count()
 
@@ -80,6 +88,8 @@ class VisitReportSerializer(serializers.ModelSerializer):
     def get_test_orders(self, obj):
         from apps.tests.models import TestOrder
         from apps.tests.serializers import TestOrderSerializer
+        if not obj.patient:
+            return []
         orders = TestOrder.objects.filter(
             sample__patient=obj.patient,
             ordered_at__date=obj.registered_at.date()
@@ -89,6 +99,8 @@ class VisitReportSerializer(serializers.ModelSerializer):
     def get_prescriptions(self, obj):
         from apps.pharmacy.models import Prescription
         from apps.pharmacy.serializers import PrescriptionSerializer
+        if not obj.patient:
+            return []
         rxs = Prescription.objects.filter(
             patient=obj.patient,
             prescribed_at__date=obj.registered_at.date()
