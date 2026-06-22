@@ -30,11 +30,11 @@ class VisitBillingEventSerializer(serializers.ModelSerializer):
 
 
 class VisitSerializer(serializers.ModelSerializer):
-    patient_name             = serializers.CharField(source='patient.full_name',           read_only=True)
-    patient_mrn              = serializers.CharField(source='patient.mrn',                 read_only=True)
-    patient_dob              = serializers.DateField(source='patient.date_of_birth',       read_only=True)
-    patient_gender           = serializers.CharField(source='patient.gender',              read_only=True)
-    patient_phone            = serializers.CharField(source='patient.phone',               read_only=True)
+    patient_name             = serializers.SerializerMethodField()
+    patient_mrn              = serializers.SerializerMethodField()
+    patient_dob              = serializers.SerializerMethodField()
+    patient_gender           = serializers.SerializerMethodField()
+    patient_phone            = serializers.SerializerMethodField()
     registered_by_name       = serializers.CharField(source='registered_by.get_full_name', read_only=True, default='')
     attending_doctor_name    = serializers.CharField(source='attending_doctor.get_full_name', read_only=True, default='')
     vitals                   = VitalsSerializer(read_only=True)
@@ -48,6 +48,26 @@ class VisitSerializer(serializers.ModelSerializer):
         model  = Visit
         fields = '__all__'
         read_only_fields = ['visit_number', 'registered_at', 'created_at', 'updated_at']
+
+    def get_patient_name(self, obj):
+        return obj.patient.full_name if obj.patient_id else ''
+
+    def get_patient_mrn(self, obj):
+        return obj.patient.mrn if obj.patient_id else ''
+
+    def get_patient_dob(self, obj):
+        return obj.patient.date_of_birth if obj.patient_id else None
+
+    def get_patient_gender(self, obj):
+        return obj.patient.gender if obj.patient_id else ''
+
+    def get_patient_phone(self, obj):
+        return obj.patient.phone if obj.patient_id else ''
+
+    def validate_patient(self, value):
+        if value is None:
+            raise serializers.ValidationError('Patient is required to register a visit.')
+        return value
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

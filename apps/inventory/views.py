@@ -1,34 +1,20 @@
-from rest_framework import serializers, viewsets, status
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.users.permissions import RBACMixin
 from .models import Reagent, ReagentCategory, StockTransaction
+from .serializers import (
+    ReagentSerializer,
+    ReagentCreateSerializer,
+    ReagentCategorySerializer,
+    StockTransactionSerializer,
+)
 
 
-class ReagentCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ReagentCategory
-        fields = '__all__'
-
-
-class ReagentSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
-    stock_level = serializers.CharField(read_only=True)
-    stock_percentage = serializers.FloatField(read_only=True)
-
-    class Meta:
-        model = Reagent
-        fields = '__all__'
-
-
-class StockTransactionSerializer(serializers.ModelSerializer):
-    reagent_name = serializers.CharField(source='reagent.name', read_only=True)
-    performed_by_name = serializers.CharField(source='performed_by.get_full_name', read_only=True)
-
-    class Meta:
-        model = StockTransaction
-        fields = '__all__'
-        read_only_fields = ['quantity_before', 'quantity_after', 'performed_by']
+class ReagentCategoryViewSet(RBACMixin, viewsets.ModelViewSet):
+    queryset = ReagentCategory.objects.all()
+    serializer_class = ReagentCategorySerializer
+    rbac_map = {a: 'inventory.manage' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
 
 
 class ReagentViewSet(RBACMixin, viewsets.ModelViewSet):
@@ -47,6 +33,11 @@ class ReagentViewSet(RBACMixin, viewsets.ModelViewSet):
         'low_stock': 'inventory.view',
         'adjust_stock': 'inventory.manage',
     }
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ReagentCreateSerializer
+        return ReagentSerializer
 
     @action(detail=False, methods=['get'])
     def low_stock(self, request):

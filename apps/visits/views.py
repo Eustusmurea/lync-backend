@@ -33,6 +33,7 @@ class VisitViewSet(RBACMixin, viewsets.ModelViewSet):
         'partial_update': 'visits.create',
         'destroy': 'visits.create',
         'advance': 'visits.create',
+        'assign_patient': 'visits.create',
         'vitals': 'clinical.vitals',
         'diagnosis': 'clinical.diagnosis',
         'consultation': 'clinical.consultation',
@@ -49,12 +50,16 @@ class VisitViewSet(RBACMixin, viewsets.ModelViewSet):
     }
 
     def perform_create(self, serializer):
+        if not serializer.validated_data.get('patient'):
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'patient': 'A patient must be registered before starting a visit.'})
         visit = serializer.save(registered_by=self.request.user)
+        from decimal import Decimal
         VisitBillingEvent.objects.create(
             visit=visit,
             stage='registration',
             description='Registration fee',
-            amount=500,
+            amount=Decimal('500'),
             created_by=self.request.user,
         )
 
@@ -257,7 +262,15 @@ class VisitViewSet(RBACMixin, viewsets.ModelViewSet):
             notes=request.data.get('notes', ''),
         )
         for item in items_data:
-            PrescriptionItem.objects.create(prescription=rx, **item)
+            PrescriptionItem.objects.create(
+                prescription=rx,
+                drug_id=item.get('drug'),
+                dose=item.get('dose', ''),
+                frequency=item.get('frequency', ''),
+                duration=item.get('duration', ''),
+                quantity=item.get('quantity', 1),
+                instructions=item.get('instructions', ''),
+            )
 
         visit.advance('pharmacy', request.user)
         VisitBillingEvent.objects.create(
