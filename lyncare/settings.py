@@ -145,3 +145,17 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:3000,http://127.0.0.1:3000'
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF (required for Django admin over HTTPS; comma-separated full origins)
+_csrf_origins = config('CSRF_TRUSTED_ORIGINS', default='').strip()
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in _csrf_origins.split(',')
+    if origin.strip()
+]
+if not DEBUG and not CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = [
+        f'https://{host.strip()}'
+        for host in ALLOWED_HOSTS
+        if host.strip() and host.strip() != '*'
+    ]
