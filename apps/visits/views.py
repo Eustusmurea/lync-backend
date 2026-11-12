@@ -31,7 +31,7 @@ class VisitViewSet(RBACMixin, viewsets.ModelViewSet):
         'create': 'visits.create',
         'update': 'visits.create',
         'partial_update': 'visits.create',
-        'destroy': 'visits.create',
+        'destroy': 'users.manage',
         'advance': 'visits.create',
         'assign_patient': 'visits.create',
         'vitals': 'clinical.vitals',
@@ -406,10 +406,10 @@ class VisitBillingEventViewSet(RBACMixin, viewsets.ModelViewSet):
     rbac_map = {
         'list': 'billing.view',
         'retrieve': 'billing.view',
-        'create': 'billing.view',
-        'update': 'billing.view',
-        'partial_update': 'billing.view',
-        'destroy': 'billing.view',
+        'create': 'billing.invoice',
+        'update': 'billing.invoice',
+        'partial_update': 'billing.invoice',
+        'destroy': 'billing.invoice',
     }
 
     def perform_create(self, serializer):

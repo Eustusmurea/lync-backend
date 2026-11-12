@@ -47,7 +47,12 @@ class VisitSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Visit
         fields = '__all__'
-        read_only_fields = ['visit_number', 'registered_at', 'created_at', 'updated_at']
+        read_only_fields = [
+            'visit_number', 'status', 'registered_at', 'registered_by',
+            'attending_doctor', 'triage_at', 'consultation_at', 'lab_at',
+            'results_ready_at', 'prescription_at', 'pharmacy_at', 'completed_at',
+            'created_at', 'updated_at',
+        ]
 
     def get_patient_name(self, obj):
         return obj.patient.full_name if obj.patient_id else ''

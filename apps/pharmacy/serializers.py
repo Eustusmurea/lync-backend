@@ -52,7 +52,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Prescription
         fields = '__all__'
-        read_only_fields = ['rx_number', 'prescribed_at', 'created_at', 'updated_at']
+        read_only_fields = [
+            'rx_number', 'prescribed_by', 'status', 'prescribed_at',
+            'created_at', 'updated_at',
+        ]
 
 
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
@@ -60,7 +63,7 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model   = Prescription
-        exclude = ['rx_number']
+        exclude = ['rx_number', 'prescribed_by']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
@@ -87,7 +90,7 @@ class DispenseSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Dispense
         fields = '__all__'
-        read_only_fields = ['dispense_id', 'dispensed_at']
+        read_only_fields = ['dispense_id', 'dispensed_at', 'dispensed_by']
 
 
 class DispenseCreateSerializer(serializers.ModelSerializer):
@@ -95,7 +98,7 @@ class DispenseCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model   = Dispense
-        exclude = ['dispense_id']
+        exclude = ['dispense_id', 'dispensed_by']
 
     def create(self, validated_data):
         from django.db import transaction
@@ -157,7 +160,7 @@ class OTCSaleSerializer(serializers.ModelSerializer):
     class Meta:
         model  = OTCSale
         fields = '__all__'
-        read_only_fields = ['sale_id', 'sold_at']
+        read_only_fields = ['sale_id', 'sold_at', 'dispensed_by']
 
     def get_total_amount(self, obj):
         return obj.total_amount
@@ -168,7 +171,7 @@ class OTCSaleCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model   = OTCSale
-        exclude = ['sale_id']
+        exclude = ['sale_id', 'dispensed_by']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')

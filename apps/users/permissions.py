@@ -132,6 +132,13 @@ class HasPermission(BasePermission):
         return user_has_permission(request.user, self.permission)
 
 
+class DenyUnmapped(BasePermission):
+    """Fail closed when an action is not listed in rbac_map."""
+
+    def has_permission(self, request, view):
+        return False
+
+
 class RBACMixin:
     """
     Map DRF actions to permissions. Set `rbac_map` on the viewset.
@@ -152,4 +159,4 @@ class RBACMixin:
         perm = self.rbac_map.get(getattr(self, 'action', None))
         if perm:
             return [IsAuthenticated(), HasPermission(perm)]
-        return [IsAuthenticated()]
+        return [IsAuthenticated(), DenyUnmapped()]

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.users.permissions import RBACMixin
+from apps.common.utils import parse_stock_quantity
 from .models import Reagent, ReagentCategory, StockTransaction
 from .serializers import (
     ReagentSerializer,
@@ -47,7 +48,7 @@ class ReagentViewSet(RBACMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def adjust_stock(self, request, pk=None):
         reagent = self.get_object()
-        qty = float(request.data.get('quantity', 0))
+        qty = parse_stock_quantity(request.data.get('quantity', 0))
         t_type = request.data.get('type', 'adjust')
         notes = request.data.get('notes', '')
 

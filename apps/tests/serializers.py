@@ -26,6 +26,7 @@ class TestResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestResult
         fields = '__all__'
+        read_only_fields = ['entered_by', 'verified_by', 'entered_at', 'verified_at', 'flag']
 
     def validate(self, attrs):
         """
@@ -62,4 +63,8 @@ class TestOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestOrder
         fields = '__all__'
-        read_only_fields = ['order_id', 'ordered_at']
+        read_only_fields = [
+            'order_id', 'ordered_at', 'ordered_by', 'assigned_to', 'status',
+            'started_at', 'completed_at', 'is_critical', 'critical_notified',
+            'critical_notified_at',
+        ]
