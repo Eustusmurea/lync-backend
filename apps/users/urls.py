@@ -6,14 +6,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers, viewsets
 from .models import User
-from .permissions import RBACMixin, get_user_permissions, ROLE_PERMISSIONS
+from .permissions import HasPermission, RBACMixin, get_user_permissions, ROLE_PERMISSIONS
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'department', 'phone', 'is_active']
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'username']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -44,7 +44,7 @@ class MeView(APIView):
 
 class PermissionsMatrixView(APIView):
     """Returns the role → permissions map for admin UI."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission('roles.view')]
 
     def get(self, request):
         return Response({

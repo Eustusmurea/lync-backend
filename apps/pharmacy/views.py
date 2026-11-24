@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Count
 from apps.users.permissions import RBACMixin
+from apps.common.utils import parse_stock_quantity
 from .models import (DrugCategory, Drug, DrugStockTransaction,
                      Prescription, PrescriptionItem, Dispense, OTCSale)
 from .serializers import (
@@ -16,7 +17,14 @@ from .serializers import (
 class DrugCategoryViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = DrugCategory.objects.all()
     serializer_class = DrugCategorySerializer
-    rbac_map = {a: 'pharmacy.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
+    rbac_map = {
+        'list': 'pharmacy.view',
+        'retrieve': 'pharmacy.view',
+        'create': 'inventory.manage',
+        'update': 'inventory.manage',
+        'partial_update': 'inventory.manage',
+        'destroy': 'inventory.manage',
+    }
 
 
 class DrugViewSet(RBACMixin, viewsets.ModelViewSet):
@@ -51,7 +59,7 @@ class DrugViewSet(RBACMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def adjust_stock(self, request, pk=None):
         drug    = self.get_object()
-        qty     = float(request.data.get('quantity', 0))
+        qty     = parse_stock_quantity(request.data.get('quantity', 0))
         t_type  = request.data.get('type', 'receive')
         notes   = request.data.get('notes', '')
         before  = drug.stock_quantity
@@ -106,10 +114,10 @@ class PrescriptionViewSet(RBACMixin, viewsets.ModelViewSet):
         'list': 'pharmacy.view',
         'retrieve': 'pharmacy.view',
         'create': 'clinical.prescribe',
-        'update': 'pharmacy.view',
-        'partial_update': 'pharmacy.view',
-        'destroy': 'pharmacy.view',
-        'cancel': 'pharmacy.view',
+        'update': 'clinical.prescribe',
+        'partial_update': 'clinical.prescribe',
+        'destroy': 'clinical.prescribe',
+        'cancel': 'clinical.prescribe',
         'active': 'pharmacy.view',
     }
 

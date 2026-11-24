@@ -15,6 +15,7 @@ DEMO_USERS = [
     ('reception', 'Reception', 'Desk', 'reception@lyncare.local', 'receptionist'),
     ('dr.jane', 'Jane', 'Clinician', 'clinician@lyncare.local', 'clinician'),
     ('lab.tech', 'Lab', 'Technician', 'lab@lyncare.local', 'technician'),
+    ('scientist', 'Achieng', 'Scientist', 'scientist@lyncare.local', 'scientist'),
     ('pharmacist', 'Pharmacy', 'Staff', 'pharmacy@lyncare.local', 'pharmacist'),
     ('accountant', 'Finance', 'Officer', 'billing@lyncare.local', 'accountant'),
 ]
@@ -68,43 +69,60 @@ class Command(BaseCommand):
 
         self._seed_lab_panels()
         self.stdout.write(self.style.SUCCESS(f'\nAll demo users use password: {password}'))
-        self.stdout.write('Login usernames: admin, reception, dr.jane, lab.tech, pharmacist, accountant')
+        self.stdout.write(
+            'Login usernames: admin, reception, dr.jane, lab.tech, scientist, pharmacist, accountant'
+        )
 
     def _seed_lab_panels(self):
         from apps.tests.models import TestPanel, TestParameter
 
         panels = [
-            ('CBC', 'Complete Blood Count', 1200, [
-                ('WBC', '10^9/L', 4.0, 11.0),
-                ('RBC', '10^12/L', 4.5, 5.5),
-                ('HGB', 'g/dL', 12.0, 17.0),
+            ('CBC', 'Complete Blood Count', 'haematology', '58410-2', 1200, [
+                ('WBC', '6690-2', '10^9/L', 4.0, 11.0, 2.0, 30.0),
+                ('RBC', '789-8', '10^12/L', 4.5, 5.5, 2.0, 8.0),
+                ('HGB', '718-7', 'g/dL', 12.0, 17.0, 7.0, 20.0),
             ]),
-            ('RFT', 'Renal Function Test', 1500, [
-                ('Creatinine', 'mg/dL', 0.6, 1.2),
-                ('Urea', 'mg/dL', 15, 45),
+            ('RFT', 'Renal Function Test', 'chemistry', '', 1500, [
+                ('Creatinine', '2160-0', 'mg/dL', 0.6, 1.2, 0.2, 8.0),
+                ('Urea', '3091-6', 'mg/dL', 15, 45, 5, 200),
             ]),
-            ('LFT', 'Liver Function Test', 1800, [
-                ('ALT', 'U/L', 7, 56),
-                ('AST', 'U/L', 10, 40),
+            ('LFT', 'Liver Function Test', 'chemistry', '24325-3', 1800, [
+                ('ALT', '1742-6', 'U/L', 7, 56, None, 1000),
+                ('AST', '1920-8', 'U/L', 10, 40, None, 1000),
             ]),
         ]
 
-        for code, name, price, params in panels:
+        for code, name, discipline, panel_loinc, price, params in panels:
             panel, _ = TestPanel.objects.get_or_create(
                 code=code,
                 defaults={'name': name, 'price': price, 'sla_hours': 4},
             )
-            for i, (pname, unit, lo, hi) in enumerate(params):
-                TestParameter.objects.get_or_create(
+            panel.discipline = discipline
+            panel.loinc_code = panel_loinc
+            panel.name = name
+            panel.save(update_fields=['discipline', 'loinc_code', 'name'])
+            for i, (pname, loinc, unit, lo, hi, crit_lo, crit_hi) in enumerate(params):
+                parameter, _ = TestParameter.objects.get_or_create(
                     panel=panel,
                     name=pname,
                     defaults={
                         'unit': unit,
+                        'loinc_code': loinc,
                         'ref_range_low': lo,
                         'ref_range_high': hi,
+                        'critical_low': crit_lo,
+                        'critical_high': crit_hi,
                         'order': i,
                     },
                 )
+                parameter.loinc_code = loinc
+                parameter.unit = unit
+                parameter.ref_range_low = lo
+                parameter.ref_range_high = hi
+                parameter.critical_low = crit_lo
+                parameter.critical_high = crit_hi
+                parameter.order = i
+                parameter.save()
 
         self.stdout.write('Lab panels seeded (CBC, RFT, LFT)')
         self._seed_drugs()

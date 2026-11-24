@@ -16,7 +16,14 @@ class InsuranceProviderViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = InsuranceProvider.objects.filter(is_active=True)
     serializer_class = InsuranceProviderSerializer
     search_fields    = ['name', 'code']
-    rbac_map = {a: 'billing.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
+    rbac_map = {
+        'list': 'billing.view',
+        'retrieve': 'billing.view',
+        'create': 'billing.invoice',
+        'update': 'billing.invoice',
+        'partial_update': 'billing.invoice',
+        'destroy': 'billing.invoice',
+    }
 
 
 class InvoiceViewSet(RBACMixin, viewsets.ModelViewSet):
@@ -30,12 +37,12 @@ class InvoiceViewSet(RBACMixin, viewsets.ModelViewSet):
     rbac_map = {
         'list': 'billing.view',
         'retrieve': 'billing.view',
-        'create': 'billing.view',
-        'update': 'billing.view',
-        'partial_update': 'billing.view',
-        'destroy': 'billing.view',
-        'issue': 'billing.view',
-        'void': 'billing.view',
+        'create': 'billing.invoice',
+        'update': 'billing.invoice',
+        'partial_update': 'billing.invoice',
+        'destroy': 'billing.invoice',
+        'issue': 'billing.invoice',
+        'void': 'billing.invoice',
         'add_payment': 'billing.payments',
         'add_item': 'billing.invoice',
         'generate_from_visit': 'billing.invoice',
@@ -102,7 +109,14 @@ class InvoiceItemViewSet(RBACMixin, viewsets.ModelViewSet):
     queryset         = InvoiceItem.objects.select_related('invoice', 'test_order')
     serializer_class = InvoiceItemSerializer
     filterset_fields = ['invoice']
-    rbac_map = {a: 'billing.view' for a in ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']}
+    rbac_map = {
+        'list': 'billing.view',
+        'retrieve': 'billing.view',
+        'create': 'billing.invoice',
+        'update': 'billing.invoice',
+        'partial_update': 'billing.invoice',
+        'destroy': 'billing.invoice',
+    }
 
 
 class PaymentViewSet(RBACMixin, viewsets.ReadOnlyModelViewSet):

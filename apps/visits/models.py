@@ -17,10 +17,8 @@ class Visit(models.Model):
     ]
 
     visit_number    = models.CharField(max_length=30, unique=True, editable=False)
-    # Patient may be unassigned when reception initiates a visit
-    patient         = models.ForeignKey(
-        Patient, on_delete=models.PROTECT, related_name='visits', null=True, blank=True
-    )
+    # Patient is required — visit always tied to a registered patient
+    patient         = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='visits')
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='registered')
     chief_complaint = models.TextField(blank=True, help_text='Reason for visit')
     notes           = models.TextField(blank=True)

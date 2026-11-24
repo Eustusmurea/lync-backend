@@ -9,6 +9,7 @@ from datetime import timedelta
 from apps.tests.models import TestOrder, TestResult
 from apps.samples.models import Sample
 from apps.inventory.models import Reagent
+from apps.common.utils import parse_report_days
 
 
 class DashboardStatsView(APIView):
@@ -62,7 +63,7 @@ class TestVolumeReportView(APIView):
     permission_classes = [IsAuthenticated, HasPermission('lab.view')]
 
     def get(self, request):
-        days = int(request.query_params.get('days', 30))
+        days = parse_report_days(request.query_params.get('days', 30))
         start = timezone.now().date() - timedelta(days=days)
 
         volume = (

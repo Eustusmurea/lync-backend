@@ -18,4 +18,4 @@ RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py seed_demo --password ${DEMO_PASSWORD:-demo1234} && gunicorn lyncare.wsgi:application --bind 0.0.0.0:8000 --workers 3"]
+CMD ["sh", "-c", "python manage.py migrate && if [ \"${SEED_DEMO:-false}\" = \"true\" ]; then python manage.py seed_demo --password \"${DEMO_PASSWORD:-demo1234}\"; fi && gunicorn lyncare.wsgi:application --bind 0.0.0.0:8000 --workers 3"]

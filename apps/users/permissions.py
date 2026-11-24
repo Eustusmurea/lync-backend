@@ -22,6 +22,7 @@ PERMISSIONS = [
     'clinical.prescribe',
     'lab.view',
     'lab.results',
+    'lab.authorize',
     'lab.panels_manage',
     'pharmacy.view',
     'pharmacy.otc',
@@ -70,6 +71,10 @@ _LAB_TECH = {
     'reports.print',
 }
 
+# Authorization is separate from result entry so the person who types a result
+# cannot release it. Scientist and lab manager hold this permission.
+_LAB_AUTHORIZE = _LAB_TECH | {'lab.authorize', 'lab.panels_manage', 'inventory.view'}
+
 _PHARMACIST = {
     'dashboard.view',
     'patients.view',
@@ -99,8 +104,11 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     'pharmacist': _PHARMACIST,
     'accountant': _ACCOUNTANT,
     # Legacy aliases
-    'manager': _ACCOUNTANT | {'inventory.view', 'inventory.manage', 'lab.panels_manage', 'visits.create', 'patients.create'},
-    'scientist': _LAB_TECH | {'lab.panels_manage', 'inventory.view'},
+    'manager': _ACCOUNTANT | {
+        'inventory.view', 'inventory.manage', 'lab.panels_manage', 'lab.view',
+        'lab.results', 'lab.authorize', 'visits.create', 'patients.create',
+    },
+    'scientist': _LAB_AUTHORIZE,
 }
 
 
@@ -132,6 +140,13 @@ class HasPermission(BasePermission):
         return user_has_permission(request.user, self.permission)
 
 
+class DenyUnmapped(BasePermission):
+    """Fail closed when an action is not listed in rbac_map."""
+
+    def has_permission(self, request, view):
+        return False
+
+
 class RBACMixin:
     """
     Map DRF actions to permissions. Set `rbac_map` on the viewset.
@@ -152,4 +167,4 @@ class RBACMixin:
         perm = self.rbac_map.get(getattr(self, 'action', None))
         if perm:
             return [IsAuthenticated(), HasPermission(perm)]
-        return [IsAuthenticated()]
+        return [IsAuthenticated(), DenyUnmapped()]

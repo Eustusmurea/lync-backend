@@ -25,6 +25,12 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['paid_at', 'received_by']
 
+    def validate(self, attrs):
+        amount = attrs.get('amount')
+        if amount is not None and amount <= 0:
+            raise serializers.ValidationError({'amount': 'Must be greater than zero'})
+        return attrs
+
 
 class InvoiceSerializer(serializers.ModelSerializer):
     patient_name    = serializers.CharField(source='patient.full_name',       read_only=True)
@@ -37,8 +43,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Invoice
         fields = '__all__'
-        read_only_fields = ['invoice_number', 'subtotal', 'discount_amt', 'tax_amt',
-                            'total', 'amount_paid', 'balance', 'created_at', 'updated_at']
+        read_only_fields = [
+            'invoice_number', 'status', 'subtotal', 'discount_amt', 'tax_amt',
+            'total', 'amount_paid', 'balance', 'issued_at', 'created_by',
+            'created_at', 'updated_at',
+        ]
 
 
 class InvoiceCreateSerializer(serializers.ModelSerializer):
@@ -46,8 +55,10 @@ class InvoiceCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model   = Invoice
-        exclude = ['invoice_number', 'subtotal', 'discount_amt', 'tax_amt',
-                   'total', 'amount_paid', 'balance']
+        exclude = [
+            'invoice_number', 'subtotal', 'discount_amt', 'tax_amt',
+            'total', 'amount_paid', 'balance', 'status', 'issued_at', 'created_by',
+        ]
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
