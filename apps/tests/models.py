@@ -4,9 +4,23 @@ from apps.samples.models import Sample
 
 
 class TestPanel(models.Model):
+    DISCIPLINES = [
+        ('haematology', 'Haematology'),
+        ('chemistry', 'Clinical Chemistry'),
+        ('microbiology', 'Microbiology'),
+        ('immunology', 'Immunology'),
+        ('histopathology', 'Histopathology'),
+        ('cytology', 'Cytology'),
+    ]
+
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
+    discipline = models.CharField(max_length=30, choices=DISCIPLINES, blank=True)
+    loinc_code = models.CharField(
+        max_length=20, blank=True,
+        help_text='Published LOINC code for the panel, when one exists',
+    )
     sla_hours = models.FloatField(default=4.0, help_text='Turnaround time target in hours')
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
@@ -18,6 +32,7 @@ class TestPanel(models.Model):
 class TestParameter(models.Model):
     panel = models.ForeignKey(TestPanel, on_delete=models.CASCADE, related_name='parameters')
     name = models.CharField(max_length=100)
+    loinc_code = models.CharField(max_length=20, blank=True)
     unit = models.CharField(max_length=30, blank=True)
     ref_range_low = models.FloatField(null=True, blank=True)
     ref_range_high = models.FloatField(null=True, blank=True)
@@ -126,3 +141,25 @@ class TestResult(models.Model):
 
     def __str__(self):
         return f"{self.order.order_id} — {self.parameter.name}: {self.value}"
+
+
+class ResultAmendment(models.Model):
+    """Preserves the authorized value when a released result is corrected."""
+
+    result = models.ForeignKey(TestResult, on_delete=models.CASCADE, related_name='amendments')
+    previous_value = models.CharField(max_length=100)
+    previous_numeric_value = models.FloatField(null=True, blank=True)
+    previous_flag = models.CharField(max_length=20)
+    new_value = models.CharField(max_length=100)
+    reason = models.TextField()
+    amended_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='result_amendments',
+    )
+    amended_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['amended_at']
+
+    def __str__(self):
+        return f"{self.result_id} amended at {self.amended_at}"

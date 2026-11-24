@@ -22,6 +22,7 @@ PERMISSIONS = [
     'clinical.prescribe',
     'lab.view',
     'lab.results',
+    'lab.authorize',
     'lab.panels_manage',
     'pharmacy.view',
     'pharmacy.otc',
@@ -70,6 +71,10 @@ _LAB_TECH = {
     'reports.print',
 }
 
+# Authorization is separate from result entry so the person who types a result
+# cannot release it. Scientist and lab manager hold this permission.
+_LAB_AUTHORIZE = _LAB_TECH | {'lab.authorize', 'lab.panels_manage', 'inventory.view'}
+
 _PHARMACIST = {
     'dashboard.view',
     'patients.view',
@@ -99,8 +104,11 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     'pharmacist': _PHARMACIST,
     'accountant': _ACCOUNTANT,
     # Legacy aliases
-    'manager': _ACCOUNTANT | {'inventory.view', 'inventory.manage', 'lab.panels_manage', 'visits.create', 'patients.create'},
-    'scientist': _LAB_TECH | {'lab.panels_manage', 'inventory.view'},
+    'manager': _ACCOUNTANT | {
+        'inventory.view', 'inventory.manage', 'lab.panels_manage', 'lab.view',
+        'lab.results', 'lab.authorize', 'visits.create', 'patients.create',
+    },
+    'scientist': _LAB_AUTHORIZE,
 }
 
 
