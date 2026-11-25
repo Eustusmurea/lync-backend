@@ -1,1 +1,35 @@
+# Secrets — never bake into the image
 .env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Django runtime artifacts
+db.sqlite3*
+media/
+staticfiles/
+static/
+
+# VCS / tooling
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Docs not needed at runtime
+docs/
+*.md
+!README.md
